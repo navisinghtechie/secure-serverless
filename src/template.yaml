@@ -7,7 +7,11 @@ Globals:
     Timeout: 30
     Environment:
       Variables:
-        SECRET_NAME: secure-serverless-db-secret # name of the RDS credentials in secrets manager
+        SECRET_NAME: secure-serverless-db-secret
+        DB_HOST: !Ref DbHost
+        DB_USER: !Ref DbUser
+        DB_NAME: !Ref DbName
+        DB_USE_IAM_AUTH: "true"
 
 Parameters:
   InitResourceStack:
@@ -16,6 +20,16 @@ Parameters:
     MaxLength: 255
     AllowedPattern: "^[a-zA-Z][-a-zA-Z0-9]*$"
     Default: Secure-Serverless
+  DbHost:
+    Type: String
+    Description: Aurora PostgreSQL cluster endpoint
+    Default: database-2.cluster-ckn4goo6k8of.us-east-1.rds.amazonaws.com
+  DbUser:
+    Type: String
+    Default: postgres
+  DbName:
+    Type: String
+    Default: unicorn_customization
 
 Resources:
   CognitoUserPool:
@@ -36,7 +50,7 @@ Resources:
     Properties:
       CodeUri: app/
       Handler: manage_partners.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.9
       Policies:
         - VPCAccessPolicy: {}
         - Version: '2012-10-17'
@@ -51,6 +65,12 @@ Resources:
               Action:
                 - "dynamodb:*"
               Resource: "*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
 #        - Version: '2012-10-17'
 #          Statement:
 #            - Effect: Allow
@@ -82,9 +102,15 @@ Resources:
     Properties:
       CodeUri: app/
       Handler: customize_unicorn.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.9
       Policies:
         - VPCAccessPolicy: {}
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
 #        - Version: '2012-10-17'
 #          Statement:
 #            - Effect: Allow
@@ -141,9 +167,15 @@ Resources:
     Properties:
       CodeUri: app/
       Handler: unicorn_parts.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.9
       Policies:
         - VPCAccessPolicy: {}
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
 #        - Version: '2012-10-17'
 #          Statement:
 #            - Effect: Allow
@@ -192,9 +224,15 @@ Resources:
       FunctionName: "CustomUnicornAnalyticsFunction"
       CodeUri: app/
       Handler: custom_unicorn_analytics.lambda_handler
-      Runtime: python3.12
+      Runtime: python3.9
       Policies:
-        - AdministratorAccess # broad permission. Module9A shows scoped down permission
+        - AdministratorAccess
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - rds-db:connect
+              Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub "${InitResourceStack}-LambdaSecurityGroup"

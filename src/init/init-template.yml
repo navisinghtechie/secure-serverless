@@ -222,6 +222,8 @@ Outputs:
   AuroraEndpoint:
     Description: Aurora endpoint for aurora database
     Value: !GetAtt AuroraDBCluster.Endpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-AuroraEndpoint
 
   DeploymentS3Bucket:
     Description: S3 Bucket to place your SAM deployments

@@ -1,11 +1,47 @@
+import os
+from datetime import date, datetime
+from decimal import Decimal
+
+import boto3
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 CUSTOM_UNICORN_TABLE = "Custom_Unicorns"
 PARTNER_COMPANY_TABLE = "Companies"
 
-# Host placeholder replaced at deploy time with the Aurora cluster endpoint.
-HOST = "secure-aurora-cluster.cluster-xxxxxxx.xxxxxxx.rds.amazonaws.com"
+HOST = os.environ.get(
+    "DB_HOST",
+    "database-2.cluster-ckn4goo6k8of.us-east-1.rds.amazonaws.com",
+)
+DB_USER = os.environ.get("DB_USER", "postgres")
+DB_NAME = os.environ.get("DB_NAME", "unicorn_customization")
+DB_PORT = int(os.environ.get("DB_PORT", "5432"))
+DB_USE_IAM_AUTH = os.environ.get("DB_USE_IAM_AUTH", "true").lower() == "true"
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
+AWS_REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
+
+
+def _serialize_value(value):
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return value
+
+
+def _serialize_row(row):
+    return {key: _serialize_value(val) for key, val in row.items()}
+
+
+def _get_auth_password():
+    if DB_USE_IAM_AUTH:
+        return boto3.client("rds", region_name=AWS_REGION).generate_db_auth_token(
+            DBHostname=HOST,
+            Port=DB_PORT,
+            DBUsername=DB_USER,
+            Region=AWS_REGION,
+        )
+    return DB_PASSWORD or "Corp123!"
 
 
 class Database:
@@ -14,7 +50,7 @@ class Database:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(sql)
                 if sql.strip().upper().startswith("SELECT"):
-                    return [dict(row) for row in cursor.fetchall()]
+                    return [_serialize_row(dict(row)) for row in cursor.fetchall()]
                 connection.commit()
                 return {"insertId": None, "affectedRows": cursor.rowcount}
         finally:
@@ -27,10 +63,12 @@ class Database:
         print("getDbConfig()")
         return {
             "host": HOST,
-            "user": "admin",
-            "password": "Corp123!",
-            "dbname": "unicorn_customization",
-            "port": 5432,
+            "user": DB_USER,
+            "password": _get_auth_password(),
+            "dbname": DB_NAME,
+            "port": DB_PORT,
+            "connect_timeout": 10,
+            "sslmode": "require",
         }
 
 

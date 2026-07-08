@@ -1,5 +1,6 @@
--- Database "unicorn_customization" is created by Aurora via DatabaseName on the cluster.
--- Connect with: psql -h <endpoint> -U admin -d unicorn_customization
+-- Run once while connected to the default "postgres" database:
+--   CREATE DATABASE unicorn_customization;
+-- Then reconnect to unicorn_customization and run the rest of this file.
 
 CREATE TABLE IF NOT EXISTS "Companies" (
     "ID" SERIAL PRIMARY KEY,

@@ -1,6 +1,8 @@
 import json
+import traceback
 
 import db_utils
+import http_util
 
 CORS_HEADERS = {
     "Access-Control-Allow-Headers": "Content-Type",
@@ -32,16 +34,18 @@ def lambda_handler(event, context):
                 "body": "Unsupported body part",
             }
 
-        horns = db_utils.list_body_part_options(body_part_to_query)
-        print("successfully retrieved " + str(len(horns)) + " records.")
-
-        response = {
-            "statusCode": 200,
-            "headers": CORS_HEADERS,
-            "body": json.dumps(horns),
-        }
-        print(response)
-        return response
+        try:
+            horns = db_utils.list_body_part_options(body_part_to_query)
+            print("successfully retrieved " + str(len(horns)) + " records.")
+            return {
+                "statusCode": 200,
+                "headers": CORS_HEADERS,
+                "body": json.dumps(horns),
+            }
+        except Exception as e:
+            print("Error retrieving body parts: " + str(e))
+            print(traceback.format_exc())
+            return http_util.return_fail("Error retrieving body parts: " + str(e))
 
     return {
         "statusCode": 400,
