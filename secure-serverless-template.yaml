@@ -5,7 +5,10 @@ Parameters:
   DbPassword:
     Type: String
     NoEcho: true
-    Default: Corp123!
+  WorkshopDemoUserPassword:
+    Type: String
+    NoEcho: true
+    Description: Console password for the ABAC demo IAM user (serverless-dev-user)
   IsWorkshopStudio:
     Type: String
     Default: "no"
@@ -404,8 +407,8 @@ Resources:
                 Resource:
                   Fn::Sub: ${ServerlessABACDemoRole.Arn}
       LoginProfile:
-        Password: pA$$woRd1
-        PasswordResetRequired: false
+        Password: !Ref WorkshopDemoUserPassword
+        PasswordResetRequired: true
 
   #### Lambda IAM Module ABAC/Permission Boundary Demo Ends
 

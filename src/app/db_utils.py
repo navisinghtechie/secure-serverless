@@ -9,11 +9,16 @@ from psycopg2.extras import RealDictCursor
 CUSTOM_UNICORN_TABLE = "Custom_Unicorns"
 PARTNER_COMPANY_TABLE = "Companies"
 
-DEFAULT_HOST = "database-2.cluster-ckn4goo6k8of.us-east-1.rds.amazonaws.com"
+
+def _require_env(name):
+    value = os.environ.get(name)
+    if not value:
+        raise ValueError(f"{name} environment variable is required")
+    return value
 
 
 def _get_host():
-    return os.environ.get("DB_HOST", DEFAULT_HOST)
+    return _require_env("DB_HOST")
 
 
 def _get_user():
@@ -56,7 +61,10 @@ def _get_auth_password():
             DBUsername=_get_user(),
             Region=_get_region(),
         )
-    return os.environ.get("DB_PASSWORD", "") or "Corp123!"
+    password = os.environ.get("DB_PASSWORD")
+    if not password:
+        raise ValueError("DB_PASSWORD environment variable is required when DB_USE_IAM_AUTH is not true")
+    return password
 
 
 class Database:

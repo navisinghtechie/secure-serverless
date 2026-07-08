@@ -23,7 +23,6 @@ Parameters:
   DbHost:
     Type: String
     Description: Aurora PostgreSQL cluster endpoint
-    Default: database-2.cluster-ckn4goo6k8of.us-east-1.rds.amazonaws.com
   DbUser:
     Type: String
     Default: postgres

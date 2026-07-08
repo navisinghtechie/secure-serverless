@@ -38,6 +38,21 @@ flowchart LR
 | Database | Aurora PostgreSQL 17, port **5432** (not MySQL 3306) |
 | Auth | IAM token via `rds:GenerateDBAuthToken`, user `postgres` |
 | Network | Lambda in private subnets; needs SG rules to reach Aurora |
+| Secrets | No passwords or endpoints in source code — supplied at deploy time |
+
+## Security
+
+This project does **not** embed database passwords, cluster endpoints, or demo user credentials in source code.
+
+| Setting | How it is provided |
+|---------|-------------------|
+| Aurora endpoint (`DB_HOST`) | Required SAM parameter `DbHost` at deploy |
+| Database auth | IAM tokens (`DB_USE_IAM_AUTH=true`) or `DB_PASSWORD` env var |
+| Aurora master password | CloudFormation parameter `DbPassword` (`NoEcho`) |
+| ABAC demo user password | CloudFormation parameter `WorkshopDemoUserPassword` (`NoEcho`) |
+| VS Code Server password | Generated at deploy time (stack output) |
+
+Never commit real passwords or production endpoints. Use environment variables, CloudFormation parameters, or IAM auth.
 
 ## Deployment options
 
@@ -52,7 +67,9 @@ aws cloudformation deploy \
   --template-file secure-serverless-template.yaml \
   --stack-name Secure-Serverless \
   --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides DbPassword='Corp123!'
+  --parameter-overrides \
+    DbPassword='YOUR-STRONG-PASSWORD' \
+    WorkshopDemoUserPassword='YOUR-DEMO-USER-PASSWORD'
 ```
 
 This creates the VPC, subnets, NAT gateway, Lambda security group, deployment S3 bucket, and workshop IAM/GuardDuty modules. It does **not** create an Aurora cluster — use your own RDS cluster or deploy `src/init/init-template.yml` separately.
@@ -98,6 +115,8 @@ sam deploy \
     DbUser='postgres' \
     DbName='unicorn_customization'
 ```
+
+`DbHost` is **required** — there is no default in `template.yaml`.
 
 ### Option B — Init stack with Aurora
 
@@ -157,12 +176,13 @@ Or open `apiclient/index.html` in your editor's **Live Preview**, enter the API 
 
 Environment variables (set in `src/template.yaml` Globals):
 
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `DB_HOST` | Aurora cluster endpoint | SAM parameter `DbHost` |
-| `DB_USER` | `postgres` | IAM-enabled database user |
-| `DB_NAME` | `unicorn_customization` | Application database |
-| `DB_USE_IAM_AUTH` | `true` | Use `generate_db_auth_token()` instead of password |
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `DB_HOST` | Yes | — | Aurora cluster endpoint (SAM parameter `DbHost`) |
+| `DB_USER` | No | `postgres` | IAM-enabled database user |
+| `DB_NAME` | No | `unicorn_customization` | Application database |
+| `DB_USE_IAM_AUTH` | No | `true` | Use `generate_db_auth_token()` instead of password |
+| `DB_PASSWORD` | Only if IAM auth disabled | — | Static password fallback (not recommended) |
 
 Lambda functions also need the `rds-db:connect` IAM policy (already in `template.yaml` per function).
 
@@ -178,6 +198,7 @@ Issues encountered during the Node.js → Python migration and how they were res
 | Connection timeout on port 5432 | Lambda SG could not reach Aurora SG | Allow Lambda egress **and** DB ingress on 5432 (see below) |
 | `Internal server error` (no details) | Same SG issue or wrong port | Use CloudWatch logs; confirm port 5432 not 3306 |
 | Auth failures | Using static password instead of IAM | Set `DB_USE_IAM_AUTH=true`, run `GRANT rds_iam TO postgres` |
+| `DB_HOST environment variable is required` | `DbHost` not passed at deploy | Redeploy with `--parameter-overrides DbHost='...'` |
 
 ### Security group fix (Lambda ↔ Aurora)
 
@@ -214,6 +235,7 @@ The templates (`secure-serverless-template.yaml`, `src/init/init-template.yml`) 
 - Exports `Secure-Serverless-VPC-ID`, subnets, and `LambdaSecurityGroup` for the VS Code stack
 - Does not create Aurora — use external RDS or `src/init/init-template.yml`
 - Includes workshop modules: CloudTrail, ABAC demo, GuardDuty (Workshop Studio mode)
+- Requires `DbPassword` and `WorkshopDemoUserPassword` parameters at deploy (no defaults)
 
 ### `vscode-server-template.yaml`
 
