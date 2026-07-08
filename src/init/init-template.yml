@@ -11,6 +11,7 @@ Resources:
     Type: 'AWS::EC2::VPC'
     Properties:
       CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
       Tags:
         - Key: Name
           Value: Secure-Serverless
@@ -174,10 +175,15 @@ Resources:
       VpcId:
         Ref: PubPrivateVPC
       SecurityGroupEgress:
-        - Description: Access to Aurora PostgreSQL
+        - Description: Access to PostgreSQL in VPC
           FromPort: 5432
           IpProtocol: tcp
-          DestinationSecurityGroupId: !Ref AuroraSecurityGroup
+          CidrIp: 10.0.0.0/16
+          ToPort: 5432
+        - Description: Access to publicly reachable PostgreSQL via NAT (if required)
+          FromPort: 5432
+          IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
           ToPort: 5432
         - Description: Access to Secrets Manager
           FromPort: 80
@@ -228,6 +234,12 @@ Outputs:
   DeploymentS3Bucket:
     Description: S3 Bucket to place your SAM deployments
     Value: !Ref DeploymentsS3Bucket
+
+  VpcId:
+    Description: VPC for Aurora and Lambda
+    Value: !Ref PubPrivateVPC
+    Export:
+      Name: !Sub ${AWS::StackName}-VPC-ID
 
   LambdaSecurityGroup:
     Description: SecurityGroup for lambda function

@@ -9,16 +9,31 @@ from psycopg2.extras import RealDictCursor
 CUSTOM_UNICORN_TABLE = "Custom_Unicorns"
 PARTNER_COMPANY_TABLE = "Companies"
 
-HOST = os.environ.get(
-    "DB_HOST",
-    "database-2.cluster-ckn4goo6k8of.us-east-1.rds.amazonaws.com",
-)
-DB_USER = os.environ.get("DB_USER", "postgres")
-DB_NAME = os.environ.get("DB_NAME", "unicorn_customization")
-DB_PORT = int(os.environ.get("DB_PORT", "5432"))
-DB_USE_IAM_AUTH = os.environ.get("DB_USE_IAM_AUTH", "true").lower() == "true"
-DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
-AWS_REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
+DEFAULT_HOST = "database-2.cluster-ckn4goo6k8of.us-east-1.rds.amazonaws.com"
+
+
+def _get_host():
+    return os.environ.get("DB_HOST", DEFAULT_HOST)
+
+
+def _get_user():
+    return os.environ.get("DB_USER", "postgres")
+
+
+def _get_dbname():
+    return os.environ.get("DB_NAME", "unicorn_customization")
+
+
+def _get_port():
+    return int(os.environ.get("DB_PORT", "5432"))
+
+
+def _use_iam_auth():
+    return os.environ.get("DB_USE_IAM_AUTH", "true").lower() == "true"
+
+
+def _get_region():
+    return os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
 
 
 def _serialize_value(value):
@@ -34,14 +49,14 @@ def _serialize_row(row):
 
 
 def _get_auth_password():
-    if DB_USE_IAM_AUTH:
-        return boto3.client("rds", region_name=AWS_REGION).generate_db_auth_token(
-            DBHostname=HOST,
-            Port=DB_PORT,
-            DBUsername=DB_USER,
-            Region=AWS_REGION,
+    if _use_iam_auth():
+        return boto3.client("rds", region_name=_get_region()).generate_db_auth_token(
+            DBHostname=_get_host(),
+            Port=_get_port(),
+            DBUsername=_get_user(),
+            Region=_get_region(),
         )
-    return DB_PASSWORD or "Corp123!"
+    return os.environ.get("DB_PASSWORD", "") or "Corp123!"
 
 
 class Database:
@@ -62,11 +77,11 @@ class Database:
     def get_db_config(self):
         print("getDbConfig()")
         return {
-            "host": HOST,
-            "user": DB_USER,
+            "host": _get_host(),
+            "user": _get_user(),
             "password": _get_auth_password(),
-            "dbname": DB_NAME,
-            "port": DB_PORT,
+            "dbname": _get_dbname(),
+            "port": _get_port(),
             "connect_timeout": 10,
             "sslmode": "require",
         }

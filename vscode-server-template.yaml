@@ -1,0 +1,775 @@
+Description: Create a VSCode code-server instance with an Amazon CloudFront distribution
+Parameters:
+  VSCodeUser:
+    Type: String
+    Description: UserName for Visual Studio Code Server
+    Default: ec2-user
+  InstanceName:
+    Type: String
+    Description: Name of the VS Code EC2 Instance Name
+    Default: VSCodeServer
+  InstanceVolumeSize:
+    Type: Number
+    Description: The VS Code EC2 instance volume size in GB
+    Default: 20
+  InstanceType:
+    Description: Type of VS Code EC2 instance
+    Type: String
+    Default: t4g.small
+    AllowedValues: [
+      c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge,
+      c5.large, c5.xlarge, c5.2xlarge, c5.4xlarge, c5.9xlarge, c5.12xlarge, c5.18xlarge, c5.24xlarge,
+      c5a.large, c5a.xlarge, c5a.2xlarge, c5a.4xlarge, c5a.8xlarge, c5a.12xlarge, c5a.16xlarge, c5a.24xlarge,
+      c5ad.large, c5ad.xlarge, c5ad.2xlarge, c5ad.4xlarge, c5ad.8xlarge, c5ad.12xlarge, c5ad.16xlarge, c5ad.24xlarge,
+      c5d.large, c5d.xlarge, c5d.2xlarge, c5d.4xlarge, c5d.9xlarge, c5d.12xlarge, c5d.18xlarge, c5d.24xlarge,
+      c5n.large, c5n.xlarge, c5n.2xlarge, c5n.4xlarge, c5n.9xlarge, c5n.18xlarge,
+      c6a.large, c6a.xlarge, c6a.2xlarge, c6a.4xlarge, c6a.8xlarge, c6a.12xlarge, c6a.16xlarge, c6a.24xlarge, c6a.32xlarge, c6a.48xlarge,
+      c6g.medium, c6g.large, c6g.xlarge, c6g.2xlarge, c6g.4xlarge, c6g.8xlarge, c6g.12xlarge, c6g.16xlarge,
+      c6gd.medium, c6gd.large, c6gd.xlarge, c6gd.2xlarge, c6gd.4xlarge, c6gd.8xlarge, c6gd.12xlarge, c6gd.16xlarge,
+      c6gn.medium, c6gn.large, c6gn.xlarge, c6gn.2xlarge, c6gn.4xlarge, c6gn.8xlarge, c6gn.12xlarge, c6gn.16xlarge,
+      c6i.large, c6i.xlarge, c6i.2xlarge, c6i.4xlarge, c6i.8xlarge, c6i.12xlarge, c6i.16xlarge, c6i.24xlarge, c6i.32xlarge,
+      c7g.medium, c7g.large, c7g.xlarge, c7g.2xlarge, c7g.4xlarge, c7g.8xlarge, c7g.12xlarge, c7g.16xlarge,
+      c7gd.medium, c7gd.large, c7gd.xlarge, c7gd.2xlarge, c7gd.4xlarge, c7gd.8xlarge, c7gd.12xlarge, c7gd.16xlarge,
+      c7gn.medium, c7gn.large, c7gn.xlarge, c7gn.2xlarge, c7gn.4xlarge, c7gn.8xlarge, c7gn.12xlarge, c7gn.16xlarge,
+      c7i.large, c7i.xlarge, c7i.2xlarge, c7i.4xlarge, c7i.8xlarge, c7i.12xlarge, c7i.16xlarge, c7i.24xlarge, c7i.48xlarge,
+      m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge, m4.10xlarge, m4.16xlarge,
+      m5.large, m5.xlarge, m5.2xlarge, m5.4xlarge, m5.8xlarge, m5.12xlarge, m5.16xlarge, m5.24xlarge,
+      m5a.large, m5a.xlarge, m5a.2xlarge, m5a.4xlarge, m5a.8xlarge, m5a.12xlarge, m5a.16xlarge, m5a.24xlarge,
+      m6a.large, m6a.xlarge, m6a.2xlarge, m6a.4xlarge, m6a.8xlarge, m6a.12xlarge, m6a.16xlarge, m6a.24xlarge, m6a.32xlarge, m6a.48xlarge,
+      m7a.medium, m7a.large, m7a.xlarge, m7a.2xlarge, m7a.4xlarge, m7a.8xlarge, m7a.12xlarge, m7a.16xlarge, m7a.24xlarge, m7a.32xlarge, m7a.48xlarge,
+      m7g.medium, m7g.large, m7g.xlarge, m7g.2xlarge, m7g.4xlarge, m7g.8xlarge, m7g.12xlarge, m7g.16xlarge,
+      m7gd.medium, m7gd.large, m7gd.xlarge, m7gd.2xlarge, m7gd.4xlarge, m7gd.8xlarge, m7gd.12xlarge, m7gd.16xlarge,
+      m7i.large, m7i.xlarge, m7i.2xlarge, m7i.4xlarge, m7i.8xlarge, m7i.12xlarge, m7i.16xlarge, m7i.24xlarge, m7i.48xlarge,
+      t2.nano, t2.micro, t2.small, t2.medium, t2.large, t2.xlarge, t2.2xlarge,
+      t3.nano, t3.micro, t3.small, t3.medium, t3.large, t3.xlarge, t3.2xlarge,
+      t3a.nano, t3a.micro, t3a.small, t3a.medium, t3a.large, t3a.xlarge, t3a.2xlarge,
+      t4g.nano, t4g.micro, t4g.small, t4g.medium, t4g.large, t4g.xlarge, t4g.2xlarge
+    ]
+  InstanceAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Description: AMI ID parameter path for the VSCode instance
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64'
+    # aws ssm get-parameters-by-path --path "/aws/service/canonical/ubuntu/" --recursive --query "Parameters[*].Name"  > canonical-ami.txt
+    # aws ssm get-parameters-by-path --path "/aws/service/ami-amazon-linux-latest/" --recursive --query "Parameters[*].Name"  > amazon-ami.txt
+    AllowedValues: [
+      '/aws/service/canonical/ubuntu/server/jammy/stable/current/arm64/hvm/ebs-gp2/ami-id',
+      '/aws/service/canonical/ubuntu/server/jammy/stable/current/amd64/hvm/ebs-gp2/ami-id',
+      '/aws/service/canonical/ubuntu/server-minimal/jammy/stable/current/arm64/hvm/ebs-gp2/ami-id',
+      '/aws/service/canonical/ubuntu/server-minimal/jammy/stable/current/amd64/hvm/ebs-gp2/ami-id',
+      '/aws/service/canonical/ubuntu/server/noble/stable/current/arm64/hvm/ebs-gp3/ami-id',
+      '/aws/service/canonical/ubuntu/server/noble/stable/current/amd64/hvm/ebs-gp3/ami-id',
+      '/aws/service/canonical/ubuntu/server-minimal/noble/stable/current/arm64/hvm/ebs-gp3/ami-id',
+      '/aws/service/canonical/ubuntu/server-minimal/noble/stable/current/amd64/hvm/ebs-gp3/ami-id',
+      '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64',
+      '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64',
+      '/aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-arm64',
+      '/aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-x86_64'
+    ]
+  HomeFolder:
+    Type: String
+    Description: Folder to open in VS Code server
+    Default: /Workshop
+  DevServerBasePath:
+    Type: String
+    Description: The base path for the application to be added to nginx sites-available list
+    Default: app
+  DevServerPort:
+    Type: Number
+    Description: The port for the DevServer
+    Default: 8081
+  AssetZipS3Path:
+    Description: The S3 path holding the asset zip file to be copied into the home folder. To leave the empty, leave blank.
+    Type: String
+    Default: ''
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Instance Configuration
+        Parameters:
+          - InstanceName
+          - InstanceVolumeSize
+          - InstanceType
+          - InstanceAmiId
+      - Label:
+          default: Code Server Configuration
+        Parameters:
+          - VSCodeUser
+          - HomeFolder
+          - AssetZipS3Path
+          - DevServerBasePath
+          - DevServerPort
+    ParameterLabels:
+      VSCodeUser:
+        default: VSCode user name
+      InstanceName:
+        default: Instance name
+      InstanceVolumeSize:
+        default: Instance volume size
+      InstanceType:
+        default: Instance type
+      InstanceAmiId:
+        default: Instance AMI ID path
+      HomeFolder:
+        default: VSCode home folder
+      DevServerBasePath:
+        default: Application base path
+      DevServerPort:
+        default: Application port
+      AssetZipS3Path:
+        default: Asset file S3 path
+Mappings:
+  # aws ec2 describe-managed-prefix-lists  --region <REGION> | jq -r '.PrefixLists[] | select (.PrefixListName == "com.amazonaws.global.cloudfront.origin-facing") | .PrefixListId'
+  AWSRegions2PrefixListID:
+    ap-northeast-1:
+      PrefixList: pl-58a04531
+    ap-northeast-2:
+      PrefixList: pl-22a6434b
+    ap-south-1:
+      PrefixList: pl-9aa247f3
+    ap-southeast-1:
+      PrefixList: pl-31a34658
+    ap-southeast-2:
+      PrefixList: pl-b8a742d1
+    ca-central-1:
+      PrefixList: pl-38a64351
+    eu-central-1:
+      PrefixList: pl-a3a144ca
+    eu-north-1:
+      PrefixList: pl-fab65393
+    eu-west-1:
+      PrefixList: pl-4fa04526
+    eu-west-2:
+      PrefixList: pl-93a247fa
+    eu-west-3:
+      PrefixList: pl-75b1541c
+    sa-east-1:
+      PrefixList: pl-5da64334
+    us-east-1:
+      PrefixList: pl-3b927c52
+    us-east-2:
+      PrefixList: pl-b6a144df
+    us-west-1:
+      PrefixList: pl-4ea04527
+    us-west-2:
+      PrefixList: pl-82a045eb
+
+Resources:
+  RandomStringLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - !Sub lambda.${AWS::URLSuffix}
+          Action:
+          - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  RandomStringLambda:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: Cloud9LambdaExecutionRole has the AWSLambdaBasicExecutionRole managed policy attached, allowing writing to CloudWatch logs
+          - id: W89
+            reason: Bootstrap function does not need the scaffolding of a VPC or provisioned concurrency
+          - id: W92
+            reason: Bootstrap function does not need provisioned concurrency
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs22.x
+      Role: !GetAtt RandomStringLambdaRole.Arn
+      MemorySize: 128
+      Timeout: 20
+      Code:
+        ZipFile: |
+          const response = require("cfn-response");
+
+          const generateRandomString = (length, chars) => {
+              var result = '';
+              for (var i = length; i > 0; --i) result += chars[Math.floor(Math.random() * chars.length)];
+              return result;
+          };
+
+          exports.handler = (event, context) => {
+            console.log (event)
+            var characters = '';
+            var randomString = '';
+
+            if (!(event['ResourceProperties']['RequireEachIncludedType'] ?? false)) {
+              if (!(event['ResourceProperties']['ExcludeLowercase'] ?? false)) {
+                characters += 'abcdefghijklmnopqrstuvwxyz';
+                randomString += generateRandomString(1, 'abcdefghijklmnopqrstuvwxyz');
+              }
+              if (!(event['ResourceProperties']['ExcludeUppercase'] ?? false)) {
+                characters += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                randomString += generateRandomString(1, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+              }
+              if (!(event['ResourceProperties']['ExcludeNumbers'] ?? false)) {
+                characters += '01234567890123456789';
+                randomString += generateRandomString(1, '0123456789');
+              }
+              if (!(event['ResourceProperties']['ExcludePunctuation'] ?? false)) {
+                characters += '!@#$%&*';
+                randomString += generateRandomString(1, '!@#$%&*');
+              }
+            } else {
+              if (!(event['ResourceProperties']['ExcludeLowercase'] ?? false)) {
+                characters += 'abcdefghijklmnopqrstuvwxyz';
+              }
+              if (!(event['ResourceProperties']['ExcludeUppercase'] ?? false)) {
+                characters += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+              }
+              if (!(event['ResourceProperties']['ExcludeNumbers'] ?? false)) {
+                characters += '01234567890123456789';
+              }
+              if (!(event['ResourceProperties']['ExcludePunctuation'] ?? false)) {
+                characters += '!@#$%&*';
+              }
+            }
+            randomString += generateRandomString(event['ResourceProperties']['Length'] - randomString.length, characters);
+            var shuffledString = randomString.split('').sort(function(){return 0.5-Math.random()}).join('');
+            const responseData = {RandomString: shuffledString};
+            response.send(event, context, response.SUCCESS, responseData);
+          };
+
+  RandomStringLambdaLogGroup:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: KMS Key not required for encrypting this non sensitive data
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${RandomStringLambda}
+      RetentionInDays: 3
+
+  ########### SSM Resources ###########
+  VSCodePassword:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt RandomStringLambda.Arn
+      Length: 8
+      RequireEachIncludedType: false
+      ExcludePunctuation: true
+
+  SSMLogBucket:
+    Type: AWS::S3::Bucket
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: Access logs aren't needed for this bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireBootstrapLogs
+            Status: Enabled
+            ExpirationInDays: 7
+            Prefix: bootstrap/
+
+  VSCodeInstanceSSMDoc:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Command
+      Content:
+        schemaVersion: '2.2'
+        description: Bootstrap VSCode code-server instance
+        mainSteps:
+          - action: aws:runShellScript
+            name: AddUser
+            inputs:
+              runCommand:
+                - '#!/bin/bash'
+                - set -euo pipefail
+                - . /etc/os-release
+                - !Sub |
+                  if [[ "${VSCodeUser}" == "ec2-user" || "${VSCodeUser}" == "ubuntu" ]]; then
+                    echo "Using existing user: ${VSCodeUser}"
+                  elif [[ "$ID" == "amzn" ]]; then
+                    useradd -m -s /bin/bash ${VSCodeUser}
+                    echo "${VSCodeUser}:${VSCodePassword.RandomString}" | chpasswd
+                    usermod -aG wheel ${VSCodeUser}
+                  else
+                    adduser --disabled-password --gecos '' ${VSCodeUser}
+                    echo "${VSCodeUser}:${VSCodePassword.RandomString}" | chpasswd
+                    usermod -aG sudo ${VSCodeUser}
+                  fi
+                - !Sub mkdir -p /home/${VSCodeUser}
+                - !Sub chown -R ${VSCodeUser}:${VSCodeUser} /home/${VSCodeUser}
+                - !Sub mkdir -p ${HomeFolder}
+                - !Sub chown -R ${VSCodeUser}:${VSCodeUser} ${HomeFolder}
+          - action: aws:runShellScript
+            name: UpdateProfile
+            inputs:
+              runCommand:
+                - '#!/bin/bash'
+                - set -euo pipefail
+                - echo LANG=en_US.utf-8 >> /etc/environment
+                - echo LC_ALL=en_US.UTF-8 >> /etc/environment
+                - !Sub echo 'PATH=$PATH:/home/${VSCodeUser}/.local/bin' >> /home/${VSCodeUser}/.bashrc
+                - !Sub echo 'export PATH' >> /home/${VSCodeUser}/.bashrc
+                - !Sub echo 'export AWS_REGION=${AWS::Region}' >> /home/${VSCodeUser}/.bashrc
+                - !Sub echo 'export AWS_ACCOUNTID=${AWS::AccountId}' >> /home/${VSCodeUser}/.bashrc
+                - !Sub echo 'export NEXT_TELEMETRY_DISABLED=1' >> /home/${VSCodeUser}/.bashrc
+                - !Sub touch /home/${VSCodeUser}/.hushlogin
+                - !Sub chown -R ${VSCodeUser}:${VSCodeUser} /home/${VSCodeUser}
+          - action: aws:runShellScript
+            name: InstallDependencies
+            inputs:
+              runCommand:
+                - '#!/bin/bash'
+                - set -euo pipefail
+                - . /etc/os-release
+                - |
+                  ARCH="$(uname -m)"
+                  if [[ "$ARCH" == "aarch64" ]]; then
+                    SAM_ARCH="arm64"
+                  else
+                    SAM_ARCH="x86_64"
+                  fi
+
+                  if [[ "$ID" == "amzn" ]]; then
+                    dnf update -y
+                    dnf install -y git docker nginx python3-pip python3-boto3 unzip openssl jq postgresql15
+                    systemctl enable --now docker
+                    curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
+                    dnf install -y nodejs
+                    npm install -g npm@latest
+                  elif [[ "$ID" == "ubuntu" ]]; then
+                    export DEBIAN_FRONTEND=noninteractive
+                    apt-get update
+                    apt-get install -y git nginx python3-pip python3-boto3 unzip openssl curl ca-certificates gnupg lsb-release jq postgresql-client
+                    install -m 0755 -d /etc/apt/keyrings
+                    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+                    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+                    apt-get update
+                    apt-get install -y docker-ce docker-ce-cli containerd.io
+                    systemctl enable --now docker
+                    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+                    apt-get install -y nodejs
+                    npm install -g npm@latest
+                  else
+                    echo "Unsupported OS: $ID" >&2
+                    exit 1
+                  fi
+
+                  curl -Lo /tmp/aws-sam-cli.zip "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-${SAM_ARCH}.zip"
+                  unzip -o /tmp/aws-sam-cli.zip -d /tmp/sam-installation
+                  /tmp/sam-installation/install
+                - !Sub |
+                  sudo -u ${VSCodeUser} git config --global user.email "participant@example.com"
+                  sudo -u ${VSCodeUser} git config --global user.name "Workshop Participant"
+                  sudo -u ${VSCodeUser} git config --global init.defaultBranch "main"
+                - !Sub usermod -aG docker ${VSCodeUser} || true
+                - echo "Dependencies installed. Checking configuration"
+                - docker --version
+                - git --version
+                - node -v
+                - npm -v
+                - python3 --version
+                - pip3 --version
+                - sam --version
+          - action: aws:runShellScript
+            name: DownloadAssets
+            inputs:
+              runCommand:
+                - '#!/bin/bash'
+                - set -euo pipefail
+                - !Sub |
+                  if [[ -z "${AssetZipS3Path}" ]]; then
+                    echo "No assets"
+                    mkdir -p ${HomeFolder}
+                    chown -R ${VSCodeUser}:${VSCodeUser} ${HomeFolder}
+                  else
+                    mkdir -p ${HomeFolder}
+                    chown -R ${VSCodeUser}:${VSCodeUser} ${HomeFolder}
+                    sudo -u ${VSCodeUser} git -C ${HomeFolder} init
+                    aws s3 cp s3://${AssetZipS3Path} /tmp/assets.zip
+                    unzip -o /tmp/assets.zip -d ${HomeFolder}
+                    chown -R ${VSCodeUser}:${VSCodeUser} ${HomeFolder}
+                  fi
+          - action: aws:runShellScript
+            name: ConfigureCodeServer
+            inputs:
+              runCommand:
+                - '#!/bin/bash'
+                - set -euo pipefail
+                - !Sub export HOME=/home/${VSCodeUser}
+                - |
+                  MEM_MB="$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)"
+                  if [[ "$MEM_MB" -le 1024 ]] && [[ ! -f /swapfile ]]; then
+                    echo "Low memory (${MEM_MB}MB): adding 2G swap"
+                    fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+                    chmod 600 /swapfile
+                    mkswap /swapfile
+                    swapon /swapfile
+                    grep -q '/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+                  fi
+                - curl -fsSL https://code-server.dev/install.sh | sh
+                - !Sub mkdir -p /home/${VSCodeUser}/.config/code-server
+                - !Sub |
+                  sudo tee /home/${VSCodeUser}/.config/code-server/config.yaml > /dev/null <<EOF
+                  cert: false
+                  auth: password
+                  bind-addr: 127.0.0.1:8080
+                  password: '${VSCodePassword.RandomString}'
+                  EOF
+                - !Sub mkdir -p /home/${VSCodeUser}/.local/share/code-server/User/
+                - !Sub |
+                  sudo tee /home/${VSCodeUser}/.local/share/code-server/User/settings.json <<EOF
+                  {
+                    "extensions.autoUpdate": false,
+                    "extensions.autoCheckUpdates": false,
+                    "terminal.integrated.cwd": "${HomeFolder}",
+                    "telemetry.telemetryLevel": "off",
+                    "security.workspace.trust.startupPrompt": "never",
+                    "security.workspace.trust.enabled": false,
+                    "security.workspace.trust.banner": "never",
+                    "security.workspace.trust.emptyWindow": false,
+                    "editor.indentSize": "tabSize",
+                    "editor.tabSize": 2,
+                    "python.testing.pytestEnabled": true,
+                    "auto-run-command.rules": [
+                      {
+                        "command": "workbench.action.terminal.new"
+                      }
+                    ]
+                  }
+                  EOF
+                - !Sub chown -R ${VSCodeUser}:${VSCodeUser} /home/${VSCodeUser}
+                - !Sub systemctl enable --now code-server@${VSCodeUser}
+                - |
+                  for i in $(seq 1 30); do
+                    if curl -fsS http://127.0.0.1:8080/ >/dev/null 2>&1; then
+                      echo "code-server is responding on port 8080"
+                      break
+                    fi
+                    if [[ "$i" -eq 30 ]]; then
+                      echo "code-server failed to start on port 8080" >&2
+                      systemctl --no-pager -l status 'code-server@*' || true
+                      journalctl --no-pager -n 50 -u 'code-server@*' || true
+                      exit 1
+                    fi
+                    sleep 2
+                  done
+                - !Sub |
+                  sudo tee /etc/nginx/conf.d/code-server.conf <<EOF
+                  server {
+                      listen 80 default_server;
+                      server_name _ ${CloudFrontDistribution.DomainName};
+                      location / {
+                        proxy_pass http://127.0.0.1:8080/;
+                        proxy_http_version 1.1;
+                        proxy_set_header Host \$host;
+                        proxy_set_header Upgrade \$http_upgrade;
+                        proxy_set_header Connection "upgrade";
+                        proxy_set_header Accept-Encoding gzip;
+                        proxy_read_timeout 86400;
+                      }
+                      location /${DevServerBasePath} {
+                        proxy_pass http://127.0.0.1:${DevServerPort}/${DevServerBasePath};
+                        proxy_http_version 1.1;
+                        proxy_set_header Host \$host;
+                        proxy_set_header Upgrade \$http_upgrade;
+                        proxy_set_header Connection "upgrade";
+                        proxy_set_header Accept-Encoding gzip;
+                        proxy_read_timeout 86400;
+                      }
+                  }
+                  EOF
+                - rm -f /etc/nginx/conf.d/default.conf /etc/nginx/sites-enabled/default 2>/dev/null || true
+                - nginx -t
+                - systemctl enable --now nginx
+                - systemctl restart nginx
+                - !Sub sudo -u ${VSCodeUser} --login code-server --install-extension AmazonWebServices.amazon-q-vscode --force
+                - !Sub sudo -u ${VSCodeUser} --login code-server --install-extension synedra.auto-run-command --force
+                - !Sub sudo -u ${VSCodeUser} --login code-server --install-extension vscjava.vscode-java-pack --force
+                - !Sub sudo -u ${VSCodeUser} --login code-server --install-extension ms-vscode.live-server --force
+                - !Sub chown -R ${VSCodeUser}:${VSCodeUser} /home/${VSCodeUser}
+                - !Sub systemctl restart code-server@${VSCodeUser}
+          - action: aws:runShellScript
+            name: InstallCDK
+            inputs:
+              runCommand:
+                - '#!/bin/bash'
+                - set -euo pipefail
+                - npm install -g aws-cdk
+                - echo "AWS CDK installed. Checking configuration"
+                - cdk --version
+          - action: aws:runShellScript
+            name: RunBootstrapScript
+            inputs:
+              runCommand:
+                - '#!/bin/bash'
+                - set -euo pipefail
+                - !Sub |
+                  if [[ -f "${HomeFolder}/bootstrap.sh" ]]; then
+                    cd ${HomeFolder}
+                    bash bootstrap.sh
+                  else
+                    echo "No bootstrap.sh found in ${HomeFolder}, skipping"
+                  fi
+
+  VSCodeInstanceSSMAssociation:
+    Type: AWS::SSM::Association
+    DependsOn: CloudFrontDistribution
+    Properties:
+      Name: !Ref VSCodeInstanceSSMDoc
+      OutputLocation:
+        S3Location:
+          OutputS3BucketName: !Ref SSMLogBucket
+          OutputS3KeyPrefix: bootstrap
+      Targets:
+        - Key: InstanceIds
+          Values: [!Ref VSCodeInstance]
+
+### Empty S3 bucket resources ###
+  EmptyS3BucketExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: !Sub EmptyS3BucketPolicy-${AWS::Region}
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:DeleteObject
+                Resource: '*'
+
+  EmptyS3Bucket:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W58
+            reason: EmptyS3BucketExecutionRole has the AWSLambdaBasicExecutionRole managed policy attached, allowing writing to CloudWatch logs
+          - id: W89
+            reason: Bootstrap function does not need the scaffolding of a VPC or provisioned concurrency
+          - id: W92
+            reason: Bootstrap function does not need provisioned concurrency
+    Properties:
+      Description: Empty S3 bucket CloudFormation custom resource
+      Handler: index.lambda_handler
+      Role:
+        Fn::GetAtt:
+          - EmptyS3BucketExecutionRole
+          - Arn
+      Runtime: python3.13
+      MemorySize: 256
+      Timeout: 120
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import logging
+
+          logger = logging.getLogger(__name__)
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              logger.info('event: {}'.format(event))
+              logger.info('context: {}'.format(context))
+
+              if event['RequestType'] == 'Delete':
+                  try:
+                      AssetsBucketName = (event['ResourceProperties']['S3Bucket'])
+                      s3 = boto3.resource('s3')
+                      logger.info('S3 Object initialized')
+                      bucket = s3.Bucket(AssetsBucketName)
+                      logger.info('S3 bucket: ' + AssetsBucketName)
+                      bucket.objects.all().delete()
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData={}, reason='S3 bucket emptied: ' + AssetsBucketName )
+                  except Exception as e:
+                      logger.error(e, exc_info=True)
+                      cfnresponse.send(event, context, cfnresponse.FAILED, responseData={}, reason=str(e))
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData={}, reason='No action to take')
+
+  EmptyS3BucketLogGroup:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W84
+            reason: KMS Key not required for encrypting this non sensitive data
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${EmptyS3Bucket}
+      RetentionInDays: 3
+
+  EmptyS3BucketCustomResource:
+    Type: Custom::EmptyS3Bucket
+    Properties:
+      ServiceToken: !GetAtt EmptyS3Bucket.Arn
+      S3Bucket: !Ref SSMLogBucket
+      ServiceTimeout: 180
+
+  ########### EC2 Resources ###########
+  VSCodeInstanceRole:
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: CodeWhisperer requires '*' as a resource, reference https://docs.aws.amazon.com/codewhisperer/latest/userguide/cloud9-setup.html#codewhisperer-IAM-policies
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+                - ssm.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AdministratorAccess
+      Policies:
+        - PolicyName: !Sub CDKAssumeRolePolicy-${AWS::Region}
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                Resource:
+                  - !Sub arn:${AWS::Partition}:iam::*:role/cdk-*
+        - PolicyName: !Sub Codewhisperer-${AWS::Region}
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codewhisperer:GenerateRecommendations
+                Resource: '*'
+
+  VSCodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref VSCodeInstanceRole
+
+  VSCodeInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      BlockDeviceMappings:
+        - Ebs:
+            VolumeSize: !Ref InstanceVolumeSize
+            VolumeType: gp3
+            DeleteOnTermination: true
+            Encrypted: true
+          DeviceName: /dev/xvda
+      Monitoring: false
+      ImageId: !Ref InstanceAmiId
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      IamInstanceProfile: !Ref VSCodeInstanceProfile
+      SubnetId: !ImportValue Secure-Serverless-PublicSubnet1
+      UserData:
+        Fn::Base64: !Sub |
+          #cloud-config
+          hostname: ${InstanceName}
+          runcmd:
+            - !Sub mkdir -p ${HomeFolder} && chown ${VSCodeUser}:${VSCodeUser} ${HomeFolder}
+      Tags:
+      - Key: Name
+        Value: !Ref InstanceName
+
+  ########### CloudFront Resources ###########
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: True
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        CacheBehaviors:
+          - AllowedMethods:
+              - GET
+              - HEAD
+              - OPTIONS
+              - PUT
+              - PATCH
+              - POST
+              - DELETE
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # see https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-cache-policies.html#managed-cache-policy-caching-disabled
+            Compress: False
+            OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3 # Managed-AllViewer - see https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/using-managed-origin-request-policies.html#:~:text=When%20using%20AWS,47e4%2Db989%2D5492eafa07d3
+            TargetOriginId: !Sub CloudFront-${AWS::StackName}
+            ViewerProtocolPolicy: allow-all
+            PathPattern: '/proxy/*'
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+            - PUT
+            - PATCH
+            - POST
+            - DELETE
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # Managed-CachingDisabled
+          OriginRequestPolicyId: 216adef6-5c7f-47e4-b989-5492eafa07d3 # Managed-AllViewer
+          TargetOriginId: !Sub CloudFront-${AWS::StackName}
+          ViewerProtocolPolicy: allow-all
+        Origins:
+          - DomainName: !GetAtt VSCodeInstance.PublicDnsName
+            Id: !Sub CloudFront-${AWS::StackName}
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+              OriginReadTimeout: 60
+              OriginKeepaliveTimeout: 60
+
+  ########### SecurityGroup Resources ###########
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG for VSCodeServer - only allow CloudFront ingress
+      VpcId: !ImportValue Secure-Serverless-VPC-ID
+      SecurityGroupIngress:
+        - Description: Allow HTTP from com.amazonaws.global.cloudfront.origin-facing
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourcePrefixListId:  !FindInMap [AWSRegions2PrefixListID, !Ref 'AWS::Region', PrefixList]
+
+Outputs:
+  Password:
+    Description: VSCode-Server Password
+    Value: !GetAtt VSCodePassword.RandomString
+  URL:
+    Description: VSCode-Server URL
+    Value: !Sub https://${CloudFrontDistribution.DomainName}/?folder=${HomeFolder}
