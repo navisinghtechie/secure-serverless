@@ -2,12 +2,20 @@
 
 Python port of the [AWS Serverless Security Workshop](https://github.com/aws-samples/aws-serverless-security-workshop) Wild Rydes API. Lambdas run **Python 3.9** and connect to **Aurora PostgreSQL 17** using **IAM database authentication** (`sslmode=require`).
 
+**New to AWS Serverless?**
+
+- [docs/WORKSHOP_GUIDE.md](docs/WORKSHOP_GUIDE.md) — step-by-step introduction
+- [docs/AWS_SERVICES_TECHNICAL_GUIDE.md](docs/AWS_SERVICES_TECHNICAL_GUIDE.md) — detailed service-by-service reference (Lambda, API Gateway, VPC, Aurora, IAM, etc.)
+
 ## Project layout
 
 ```
 secure-serverless/
 ├── apiclient/                    Static API test UI (Live Preview on index.html)
 ├── bootstrap.sh                  Optional VS Code Server bootstrap hook
+├── docs/
+│   ├── WORKSHOP_GUIDE.md         Beginner's guide — start here if you're new
+│   └── AWS_SERVICES_TECHNICAL_GUIDE.md  Deep dive: every AWS service explained
 ├── secure-serverless-template.yaml   VPC, security groups, workshop IAM modules
 ├── vscode-server-template.yaml   Browser-based VS Code (code-server + CloudFront)
 └── src/
