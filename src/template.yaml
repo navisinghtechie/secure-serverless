@@ -31,11 +31,13 @@ Parameters:
     Default: unicorn_customization
 
 Resources:
+  # Cognito User Pool
   CognitoUserPool:
     Type: "AWS::Cognito::UserPool"
     Properties:
       UserPoolName: !Sub '${AWS::StackName}-users'
 
+  # Partner DynamoDB Table
   PartnerDDBTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
@@ -51,7 +53,7 @@ Resources:
       Handler: manage_partners.lambda_handler
       Runtime: python3.9
       Policies:
-        - VPCAccessPolicy: {}
+        - VPCAccessPolicy: { }
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -70,12 +72,12 @@ Resources:
               Action:
                 - rds-db:connect
               Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
-#        - Version: '2012-10-17'
-#          Statement:
-#            - Effect: Allow
-#              Action:
-#                - "secretsmanager:GetSecretValue"
-#              Resource: "*"
+      #        - Version: '2012-10-17'
+      #          Statement:
+      #            - Effect: Allow
+      #              Action:
+      #                - "secretsmanager:GetSecretValue"
+      #              Resource: "*"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub "${InitResourceStack}-LambdaSecurityGroup"
@@ -103,28 +105,28 @@ Resources:
       Handler: customize_unicorn.lambda_handler
       Runtime: python3.9
       Policies:
-        - VPCAccessPolicy: {}
+        - VPCAccessPolicy: { }
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
                 - rds-db:connect
               Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
-#        - Version: '2012-10-17'
-#          Statement:
-#            - Effect: Allow
-#              Action:
-#                - "verifiedpermissions:IsAuthorized"
-#                - "verifiedpermissions:CreatePolicy"
-#                - "verifiedpermissions:ListPolicies"
-#                - "verifiedpermissions:DeletePolicy"
-#              Resource: "*"
-#        - Version: '2012-10-17'
-#          Statement:
-#            - Effect: Allow
-#              Action:
-#                - "secretsmanager:GetSecretValue"
-#              Resource: "*"
+      #        - Version: '2012-10-17'
+      #          Statement:
+      #            - Effect: Allow
+      #              Action:
+      #                - "verifiedpermissions:IsAuthorized"
+      #                - "verifiedpermissions:CreatePolicy"
+      #                - "verifiedpermissions:ListPolicies"
+      #                - "verifiedpermissions:DeletePolicy"
+      #              Resource: "*"
+      #        - Version: '2012-10-17'
+      #          Statement:
+      #            - Effect: Allow
+      #              Action:
+      #                - "secretsmanager:GetSecretValue"
+      #              Resource: "*"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub "${InitResourceStack}-LambdaSecurityGroup"
@@ -168,19 +170,19 @@ Resources:
       Handler: unicorn_parts.lambda_handler
       Runtime: python3.9
       Policies:
-        - VPCAccessPolicy: {}
+        - VPCAccessPolicy: { }
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
                 - rds-db:connect
               Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
-#        - Version: '2012-10-17'
-#          Statement:
-#            - Effect: Allow
-#              Action:
-#                - "secretsmanager:GetSecretValue"
-#              Resource: "*"
+      #        - Version: '2012-10-17'
+      #          Statement:
+      #            - Effect: Allow
+      #              Action:
+      #                - "secretsmanager:GetSecretValue"
+      #              Resource: "*"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub "${InitResourceStack}-LambdaSecurityGroup"
@@ -216,6 +218,7 @@ Resources:
             Method: get
             RestApiId:
               Ref: UnicornApi
+
   #------Module 9: Lambda IAM modules starts
   CustomUnicornAnalyticsFunction:
     Type: AWS::Serverless::Function
@@ -286,6 +289,7 @@ Resources:
       TableName: !Sub '${AWS::StackName}-CustomizationDemandAnalytics'
   #---- Lambda IAM Module Ends -----
 
+  # Unicorn API
   UnicornApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -297,21 +301,36 @@ Resources:
             Ref: AWS::StackName
           description: Wild Ryde API for describing and managing unicorn customizations
           version: 1.0.0
-        ### TODO: add authorizer
+
+        #Security Definitions
+        securityDefinitions:
+          CustomAuthorizer:
+            type: apiKey
+            name: Authorization
+            in: header
+            x-amazon-apigateway-authtype: custom
+            x-amazon-apigateway-authorizer:
+              type: token
+              authorizerUri:
+                Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CustomAuthorizerFunction.Arn}/invocations
+              authorizerCredentials:
+                Fn::Sub: ${ApiGatewayAuthorizerRole.Arn}
+              authorizerResultTtlInSeconds: 60
+
         paths:
           "/socks":
             get:
-#              security:
-#                - CustomAuthorizer: []
+              security:
+                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UnicornPartsFunction.Arn}/invocations
-              responses: {}
+              responses: { }
             options:
               consumes:
-              - "application/json"
+                - "application/json"
               responses:
                 "200":
                   description: "200 response"
@@ -336,17 +355,17 @@ Resources:
                 type: "mock"
           "/horns":
             get:
-#              security:
-#                - CustomAuthorizer: []
+              security:
+                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UnicornPartsFunction.Arn}/invocations
-              responses: {}
+              responses: { }
             options:
               consumes:
-              - "application/json"
+                - "application/json"
               responses:
                 "200":
                   description: "200 response"
@@ -371,17 +390,17 @@ Resources:
                 type: "mock"
           "/glasses":
             get:
-#              security:
-#                - CustomAuthorizer: []
+              security:
+                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UnicornPartsFunction.Arn}/invocations
-              responses: {}
+              responses: { }
             options:
               consumes:
-              - "application/json"
+                - "application/json"
               responses:
                 "200":
                   description: "200 response"
@@ -406,17 +425,17 @@ Resources:
                 type: "mock"
           "/capes":
             get:
-#              security:
-#                - CustomAuthorizer: []
+              security:
+                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UnicornPartsFunction.Arn}/invocations
-              responses: {}
+              responses: { }
             options:
               consumes:
-              - "application/json"
+                - "application/json"
               responses:
                 "200":
                   description: "200 response"
@@ -441,26 +460,26 @@ Resources:
                 type: "mock"
           "/customizations":
             get:
-#              security:
-#                - CustomAuthorizer: []
+              security:
+                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CustomizeUnicornFunction.Arn}/invocations
-              responses: {}
+              responses: { }
             post:
-#              security:
-#                - CustomAuthorizer: []
+              security:
+                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CustomizeUnicornFunction.Arn}/invocations
-              responses: {}
+              responses: { }
             options:
               consumes:
-              - "application/json"
+                - "application/json"
               responses:
                 "200":
                   description: "200 response"
@@ -485,26 +504,26 @@ Resources:
                 type: "mock"
           "/customizations/{id}":
             get:
-#              security:
-#                - CustomAuthorizer: []
+              security:
+                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CustomizeUnicornFunction.Arn}/invocations
-              responses: {}
+              responses: { }
             delete:
-#              security:
-#                - CustomAuthorizer: []
+              security:
+                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CustomizeUnicornFunction.Arn}/invocations
-              responses: {}
+              responses: { }
             options:
               consumes:
-              - "application/json"
+                - "application/json"
               responses:
                 "200":
                   description: "200 response"
@@ -529,17 +548,17 @@ Resources:
                 type: "mock"
           "/partners":
             post:
-#              security:
-#                - CustomAuthorizer: []
+              security:
+                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ManagePartnerFunction.Arn}/invocations
-              responses: {}
+              responses: { }
             options:
               consumes:
-              - "application/json"
+                - "application/json"
               responses:
                 "200":
                   description: "200 response"
@@ -573,6 +592,50 @@ Resources:
               gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
               gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
               gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+
+  #Custom Authorizer Function
+  CustomAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: authorizer/
+      Runtime: python3.9
+      Handler: index.handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - "dynamodb:*"
+              Resource: "*"
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref CognitoUserPool
+          PARTNER_DDB_TABLE: !Ref PartnerDDBTable
+
+
+  #API Gateway AuthorizerRole
+  ApiGatewayAuthorizerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "apigateway.amazonaws.com"
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: "InvokeAuthorizerFunction"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - lambda:InvokeAsync
+                  - lambda:InvokeFunction
+                Resource: !Sub ${CustomAuthorizerFunction.Arn}
+
 
 Outputs:
   ApiURL:
