@@ -301,10 +301,14 @@ Resources:
             Action:
               - 'lambda:InvokeFunction'
               - 'lambda:GetFunction'
-            Resource: "arn:aws:lambda:*:*:function:*" #start with the FineGrained
-              #Condition:
-              # StringEquals:
-            #  "aws:ResourceTag/application": "${aws:PrincipalTag/application}"
+            Resource: "arn:aws:lambda:*:*:function:*"
+            Condition:
+              StringEquals:
+                "aws:RequestTag/application": "${aws:PrincipalTag/application}"
+                "aws:ResourceTag/application": "${aws:PrincipalTag/application}"
+              ForAllValues:StringEquals:
+                "aws:TagKeys":
+                  - application
 
   ServerlessABACDemoPolicyListLambdaIAM:
     Type: 'AWS::IAM::ManagedPolicy'
@@ -316,15 +320,16 @@ Resources:
           - Effect: Allow
             Action:
               - 'lambda:GetAccountSettings'
+              - 'lambda:GetFunctionConfiguration'
               - 'lambda:CreateFunction'
               - 'lambda:DeleteFunction'
-              - 'lambda:UpdateFunction'
               - 'lambda:TagResource'
               - 'lambda:List*'
               - 'lambda:List*'
               - 'iam:List*' #may be move to it's own
               - 'iam:Get*'
               - 'cloudformation:DescribeStackResources'
+              - 'cloudformation:ListStackResources'
               - 'kms:ListAliases'
               - 'tag:GetResources'
             Resource: "*" #start with the FineGrained
@@ -358,9 +363,9 @@ Resources:
               - "iam:DeletePolicy"
               - "iam:SetDefaultPolicyVersion"
             Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/Serverless-*"
-            #Condition:
-            #  ArnEquals:
-            #    "iam:PermissionBoundary": !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ServerlessPermissionBoundaryDemoBoundaryPolicy"
+            Condition:
+              ArnEquals:
+                "iam:PermissionsBoundary": !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:policy/ServerlessPermissionBoundaryDemoBoundaryPolicy"
           - Sid: "PassServerlessRoles"
             Effect: Allow
             Action:
