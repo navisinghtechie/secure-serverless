@@ -37,6 +37,31 @@ Resources:
     Properties:
       UserPoolName: !Sub '${AWS::StackName}-users'
 
+  # Cognito resources - AVP Module
+  CognitoUserPoolGroupAdmin:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      Description: Admin user group to manage partners
+      GroupName: admin-users
+      UserPoolId: !Ref CognitoUserPool
+
+  CognitoUserPoolGroupPowerUser:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      Description: Power user group with limited admin access
+      GroupName: power-users
+      UserPoolId: !Ref CognitoUserPool
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: avp-admin-client
+      GenerateSecret: false
+      UserPoolId: !Ref CognitoUserPool
+      ExplicitAuthFlows:
+        - ADMIN_NO_SRP_AUTH
+        - USER_PASSWORD_AUTH
+
   # Partner DynamoDB Table
   PartnerDDBTable:
     Type: AWS::Serverless::SimpleTable
@@ -548,8 +573,8 @@ Resources:
                 type: "mock"
           "/partners":
             post:
-              security:
-                - CustomAuthorizer: [ ]
+              #              security:
+              #                - CustomAuthorizer: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
