@@ -1,44 +1,92 @@
+import json
 import os
 from datetime import date, datetime
 from decimal import Decimal
 
+from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
 import boto3
+from botocore.exceptions import ClientError
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 CUSTOM_UNICORN_TABLE = "Custom_Unicorns"
 PARTNER_COMPANY_TABLE = "Companies"
 
-
-def _require_env(name):
-    value = os.environ.get(name)
-    if not value:
-        raise ValueError(f"{name} environment variable is required")
-    return value
+_secrets_client = None
+_rds_client = None
+_secret_cache_client = None
 
 
-def _get_host():
-    return _require_env("DB_HOST")
-
-
-def _get_user():
-    return os.environ.get("DB_USER", "postgres")
+def _get_region():
+    return os.environ.get(
+        "AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+    )
 
 
 def _get_dbname():
     return os.environ.get("DB_NAME", "unicorn_customization")
 
 
-def _get_port():
-    return int(os.environ.get("DB_PORT", "5432"))
-
-
 def _use_iam_auth():
     return os.environ.get("DB_USE_IAM_AUTH", "true").lower() == "true"
 
 
-def _get_region():
-    return os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1"))
+def _get_rds_client():
+    global _rds_client
+    if _rds_client is None:
+        _rds_client = boto3.client("rds", region_name=_get_region())
+    return _rds_client
+
+
+def _get_secret_name():
+    secret_name = os.environ.get("SECRET_NAME")
+    if not secret_name:
+        raise ValueError("SECRET_NAME environment variable is required")
+    return secret_name
+
+
+def _get_secret_cache():
+    global _secret_cache_client
+    if _secret_cache_client is None:
+        client = boto3.client("secretsmanager", region_name=_get_region())
+        config = SecretCacheConfig(
+            secret_refresh_interval=float(
+                os.environ.get("SECRET_CACHE_TTL_SECONDS", "300")
+            )
+        )
+        _secret_cache_client = SecretCache(config=config, client=client)
+    return _secret_cache_client
+
+
+def _load_db_secret():
+    secret_string = _get_secret_cache().get_secret_string(_get_secret_name())
+
+    if not secret_string:
+        raise ValueError("Cannot parse DB credentials from Secrets Manager.")
+
+    secret = json.loads(secret_string)
+    for key in ("host", "username"):
+        if not secret.get(key):
+            raise ValueError(f"Secret is missing required field: {key}")
+
+    return secret
+
+
+def _resolve_password(host, user, port, secret):
+    if _use_iam_auth():
+        return _get_rds_client().generate_db_auth_token(
+            DBHostname=host,
+            Port=port,
+            DBUsername=user,
+            Region=_get_region(),
+        )
+
+    password = secret.get("password")
+    if not password:
+        raise ValueError(
+            "Secret must contain 'password' when DB_USE_IAM_AUTH is not true"
+        )
+    return password
 
 
 def _serialize_value(value):
@@ -51,20 +99,6 @@ def _serialize_value(value):
 
 def _serialize_row(row):
     return {key: _serialize_value(val) for key, val in row.items()}
-
-
-def _get_auth_password():
-    if _use_iam_auth():
-        return boto3.client("rds", region_name=_get_region()).generate_db_auth_token(
-            DBHostname=_get_host(),
-            Port=_get_port(),
-            DBUsername=_get_user(),
-            Region=_get_region(),
-        )
-    password = os.environ.get("DB_PASSWORD")
-    if not password:
-        raise ValueError("DB_PASSWORD environment variable is required when DB_USE_IAM_AUTH is not true")
-    return password
 
 
 class Database:
@@ -84,12 +118,18 @@ class Database:
 
     def get_db_config(self):
         print("getDbConfig()")
+        secret = _load_db_secret()
+
+        host = secret["host"]
+        user = secret["username"]
+        port = int(secret.get("port", 5432))
+
         return {
-            "host": _get_host(),
-            "user": _get_user(),
-            "password": _get_auth_password(),
+            "host": host,
+            "user": user,
+            "password": _resolve_password(host, user, port, secret),
             "dbname": _get_dbname(),
-            "port": _get_port(),
+            "port": port,
             "connect_timeout": 10,
             "sslmode": "require",
         }

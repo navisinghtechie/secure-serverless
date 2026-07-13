@@ -8,6 +8,7 @@ Globals:
     Environment:
       Variables:
         SECRET_NAME: secure-serverless-db-secret
+        SECRET_CACHE_TTL_SECONDS: "300"
         DB_HOST: !Ref DbHost
         DB_USER: !Ref DbUser
         DB_NAME: !Ref DbName
@@ -97,12 +98,13 @@ Resources:
               Action:
                 - rds-db:connect
               Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
-      #        - Version: '2012-10-17'
-      #          Statement:
-      #            - Effect: Allow
-      #              Action:
-      #                - "secretsmanager:GetSecretValue"
-      #              Resource: "*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "secretsmanager:GetSecretValue"
+                - "secretsmanager:DescribeSecret"
+              Resource: "*"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub "${InitResourceStack}-LambdaSecurityGroup"
@@ -137,21 +139,22 @@ Resources:
               Action:
                 - rds-db:connect
               Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
-      #        - Version: '2012-10-17'
-      #          Statement:
-      #            - Effect: Allow
-      #              Action:
-      #                - "verifiedpermissions:IsAuthorized"
-      #                - "verifiedpermissions:CreatePolicy"
-      #                - "verifiedpermissions:ListPolicies"
-      #                - "verifiedpermissions:DeletePolicy"
-      #              Resource: "*"
-      #        - Version: '2012-10-17'
-      #          Statement:
-      #            - Effect: Allow
-      #              Action:
-      #                - "secretsmanager:GetSecretValue"
-      #              Resource: "*"
+        #        - Version: '2012-10-17'
+        #          Statement:
+        #            - Effect: Allow
+        #              Action:
+        #                - "verifiedpermissions:IsAuthorized"
+        #                - "verifiedpermissions:CreatePolicy"
+        #                - "verifiedpermissions:ListPolicies"
+        #                - "verifiedpermissions:DeletePolicy"
+        #              Resource: "*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "secretsmanager:GetSecretValue"
+                - "secretsmanager:DescribeSecret"
+              Resource: "*"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub "${InitResourceStack}-LambdaSecurityGroup"
@@ -202,12 +205,13 @@ Resources:
               Action:
                 - rds-db:connect
               Resource: !Sub "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:*/*"
-      #        - Version: '2012-10-17'
-      #          Statement:
-      #            - Effect: Allow
-      #              Action:
-      #                - "secretsmanager:GetSecretValue"
-      #              Resource: "*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - "secretsmanager:GetSecretValue"
+                - "secretsmanager:DescribeSecret"
+              Resource: "*"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub "${InitResourceStack}-LambdaSecurityGroup"
