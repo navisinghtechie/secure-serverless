@@ -1,11 +1,14 @@
 # Secure Serverless (Python)
 
-Python port of the [AWS Serverless Security Workshop](https://github.com/aws-samples/aws-serverless-security-workshop) Wild Rydes API. Lambdas run **Python 3.9** and connect to **Aurora PostgreSQL 17** using **IAM database authentication** (`sslmode=require`).
+Python port of the [AWS Serverless Security Workshop](https://github.com/aws-samples/aws-serverless-security-workshop)
+Wild Rydes API. Lambdas run **Python 3.9** and connect to **Aurora PostgreSQL 17** using **IAM database authentication
+** (`sslmode=require`).
 
 **New to AWS Serverless?**
 
 - [docs/WORKSHOP_GUIDE.md](docs/WORKSHOP_GUIDE.md) — step-by-step introduction
-- [docs/AWS_SERVICES_TECHNICAL_GUIDE.md](docs/AWS_SERVICES_TECHNICAL_GUIDE.md) — detailed service-by-service reference (Lambda, API Gateway, VPC, Aurora, IAM, etc.)
+- [docs/AWS_SERVICES_TECHNICAL_GUIDE.md](docs/AWS_SERVICES_TECHNICAL_GUIDE.md) — detailed service-by-service reference (
+  Lambda, API Gateway, VPC, Aurora, IAM, etc.)
 
 ## Project layout
 
@@ -31,34 +34,34 @@ secure-serverless/
 
 ```mermaid
 flowchart LR
-  Client --> APIGW[API Gateway]
-  APIGW --> Lambda[Lambda in VPC]
-  Lambda --> Aurora[(Aurora PostgreSQL 17)]
-  Lambda --> DDB[(DynamoDB)]
-  Lambda --> Cognito[Cognito]
-  VSCode[VS Code Server] --> SAM[sam build / deploy]
-  SAM --> Lambda
+    Client --> APIGW[API Gateway]
+    APIGW --> Lambda[Lambda in VPC]
+    Lambda --> Aurora[(Aurora PostgreSQL 17)]
+    Lambda --> DDB[(DynamoDB)]
+    Lambda --> Cognito[Cognito]
+    VSCode[VS Code Server] --> SAM[sam build / deploy]
+    SAM --> Lambda
 ```
 
-| Component | Details |
-|-----------|---------|
-| Runtime | Python 3.9 (SAM builds via Docker — host Python version does not need to match) |
-| Database | Aurora PostgreSQL 17, port **5432** (not MySQL 3306) |
-| Auth | IAM token via `rds:GenerateDBAuthToken`, user `postgres` |
-| Network | Lambda in private subnets; needs SG rules to reach Aurora |
-| Secrets | No passwords or endpoints in source code — supplied at deploy time |
+| Component | Details                                                                         |
+|-----------|---------------------------------------------------------------------------------|
+| Runtime   | Python 3.9 (SAM builds via Docker — host Python version does not need to match) |
+| Database  | Aurora PostgreSQL 17, port **5432** (not MySQL 3306)                            |
+| Auth      | IAM token via `rds:GenerateDBAuthToken`, user `postgres`                        |
+| Network   | Lambda in private subnets; needs SG rules to reach Aurora                       |
+| Secrets   | No passwords or endpoints in source code — supplied at deploy time              |
 
 ## Security
 
 This project does **not** embed database passwords, cluster endpoints, or demo user credentials in source code.
 
-| Setting | How it is provided |
-|---------|-------------------|
-| Aurora endpoint (`DB_HOST`) | Required SAM parameter `DbHost` at deploy |
-| Database auth | IAM tokens (`DB_USE_IAM_AUTH=true`) or `DB_PASSWORD` env var |
-| Aurora master password | CloudFormation parameter `DbPassword` (`NoEcho`) |
-| ABAC demo user password | CloudFormation parameter `WorkshopDemoUserPassword` (`NoEcho`) |
-| VS Code Server password | Generated at deploy time (stack output) |
+| Setting                     | How it is provided                                             |
+|-----------------------------|----------------------------------------------------------------|
+| Aurora endpoint (`DB_HOST`) | Required SAM parameter `DbHost` at deploy                      |
+| Database auth               | IAM tokens (`DB_USE_IAM_AUTH=true`) or `DB_PASSWORD` env var   |
+| Aurora master password      | CloudFormation parameter `DbPassword` (`NoEcho`)               |
+| ABAC demo user password     | CloudFormation parameter `WorkshopDemoUserPassword` (`NoEcho`) |
+| VS Code Server password     | Generated at deploy time (stack output)                        |
 
 Never commit real passwords or production endpoints. Use environment variables, CloudFormation parameters, or IAM auth.
 
@@ -80,7 +83,9 @@ aws cloudformation deploy \
     WorkshopDemoUserPassword='YOUR-DEMO-USER-PASSWORD'
 ```
 
-This creates the VPC, subnets, NAT gateway, Lambda security group, deployment S3 bucket, and workshop IAM/GuardDuty modules. It does **not** create an Aurora cluster — use your own RDS cluster or deploy `src/init/init-template.yml` separately.
+This creates the VPC, subnets, NAT gateway, Lambda security group, deployment S3 bucket, and workshop IAM/GuardDuty
+modules. It does **not** create an Aurora cluster — use your own RDS cluster or deploy `src/init/init-template.yml`
+separately.
 
 **2. Package and upload workshop assets (optional)**
 
@@ -128,7 +133,8 @@ sam deploy \
 
 ### Option B — Init stack with Aurora
 
-Use `src/init/init-template.yml` when you want CloudFormation to create Aurora PostgreSQL 17 inside the workshop VPC (includes Cloud9):
+Use `src/init/init-template.yml` when you want CloudFormation to create Aurora PostgreSQL 17 inside the workshop VPC (
+includes Cloud9):
 
 ```bash
 cd src/init
@@ -178,19 +184,57 @@ After deploy, get the API URL from CloudFormation outputs or API Gateway:
 curl -s "https://YOUR-API-ID.execute-api.us-east-1.amazonaws.com/dev/socks" | jq .
 ```
 
-Or open `apiclient/index.html` in your editor's **Live Preview**, enter the API base URL, and use **Module 0** to test `GET /socks` without auth.
+Or open `apiclient/index.html` in your editor's **Live Preview**, enter the API base URL, and use **Module 0** to test
+`GET /socks` without auth.
+
+## SQL injection demo (workshop)
+
+`POST /customizations` intentionally builds SQL with string interpolation.
+
+**Use only in your own workshop environment.**
+
+### Prerequisites
+
+1. A partner OAuth token with `WildRydes/CustomizeUnicorn` scope (from `POST /partners`).
+2. `POST https://YOUR-API-ID.execute-api.us-east-1.amazonaws.com/dev/customizations`
+3. Header: `Authorization: Bearer <partner-access-token>`
+4. Header: `Content-Type: application/json`
+
+**Request body:**
+
+```json
+{
+  "name": "Orange-themed unicorn",
+  "imageUrl": "https://en.wikipedia.org/wiki/Orange_(fruit)",
+  "sock": "1",
+  "horn": "2",
+  "glasses": "3",
+  "cape": "2) RETURNING \"ID\"; INSERT INTO \"Socks\" (\"NAME\", \"PRICE\") VALUES ('Bad color', 100.0) RETURNING \"ID\"; --"
+}
+```
+
+**SQL produced (simplified):**
+
+```sql
+INSERT INTO "Custom_Unicorns" (...)
+VALUES ('Orange-themed unicorn', 34, '...', 1, 2, 3, 2) RETURNING "ID";
+
+INSERT INTO "Socks" ("NAME", "PRICE") VALUES ('Bad color', 100.0) RETURNING "ID";
+
+-- ) RETURNING "ID"
+```
 
 ## Configuration reference
 
 Environment variables (set in `src/template.yaml` Globals):
 
-| Variable | Required | Default | Purpose |
-|----------|----------|---------|---------|
-| `DB_HOST` | Yes | — | Aurora cluster endpoint (SAM parameter `DbHost`) |
-| `DB_USER` | No | `postgres` | IAM-enabled database user |
-| `DB_NAME` | No | `unicorn_customization` | Application database |
-| `DB_USE_IAM_AUTH` | No | `true` | Use `generate_db_auth_token()` instead of password |
-| `DB_PASSWORD` | Only if IAM auth disabled | — | Static password fallback (not recommended) |
+| Variable          | Required                  | Default                 | Purpose                                            |
+|-------------------|---------------------------|-------------------------|----------------------------------------------------|
+| `DB_HOST`         | Yes                       | —                       | Aurora cluster endpoint (SAM parameter `DbHost`)   |
+| `DB_USER`         | No                        | `postgres`              | IAM-enabled database user                          |
+| `DB_NAME`         | No                        | `unicorn_customization` | Application database                               |
+| `DB_USE_IAM_AUTH` | No                        | `true`                  | Use `generate_db_auth_token()` instead of password |
+| `DB_PASSWORD`     | Only if IAM auth disabled | —                       | Static password fallback (not recommended)         |
 
 Lambda functions also need the `rds-db:connect` IAM policy (already in `template.yaml` per function).
 
@@ -198,15 +242,15 @@ Lambda functions also need the `rds-db:connect` IAM policy (already in `template
 
 Issues encountered during the Node.js → Python migration and how they were resolved:
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `sam build` fails — Python 3.12 not found | Cloud9/AL2 only had Python 3.9 | Runtime set to `python3.9`; SAM builds in Docker |
-| `Policies` under `Globals.Function` | SAM does not support this | Policies defined on each function resource |
-| `name 'DB_USER' is not defined` | Partial edit of `db_utils.py` | Config read at runtime via `_get_user()` helpers |
-| Connection timeout on port 5432 | Lambda SG could not reach Aurora SG | Allow Lambda egress **and** DB ingress on 5432 (see below) |
-| `Internal server error` (no details) | Same SG issue or wrong port | Use CloudWatch logs; confirm port 5432 not 3306 |
-| Auth failures | Using static password instead of IAM | Set `DB_USE_IAM_AUTH=true`, run `GRANT rds_iam TO postgres` |
-| `DB_HOST environment variable is required` | `DbHost` not passed at deploy | Redeploy with `--parameter-overrides DbHost='...'` |
+| Symptom                                    | Cause                                | Fix                                                         |
+|--------------------------------------------|--------------------------------------|-------------------------------------------------------------|
+| `sam build` fails — Python 3.12 not found  | Cloud9/AL2 only had Python 3.9       | Runtime set to `python3.9`; SAM builds in Docker            |
+| `Policies` under `Globals.Function`        | SAM does not support this            | Policies defined on each function resource                  |
+| `name 'DB_USER' is not defined`            | Partial edit of `db_utils.py`        | Config read at runtime via `_get_user()` helpers            |
+| Connection timeout on port 5432            | Lambda SG could not reach Aurora SG  | Allow Lambda egress **and** DB ingress on 5432 (see below)  |
+| `Internal server error` (no details)       | Same SG issue or wrong port          | Use CloudWatch logs; confirm port 5432 not 3306             |
+| Auth failures                              | Using static password instead of IAM | Set `DB_USE_IAM_AUTH=true`, run `GRANT rds_iam TO postgres` |
+| `DB_HOST environment variable is required` | `DbHost` not passed at deploy        | Redeploy with `--parameter-overrides DbHost='...'`          |
 
 ### Security group fix (Lambda ↔ Aurora)
 
@@ -230,9 +274,11 @@ aws ec2 authorize-security-group-ingress \
   --ip-permissions IpProtocol=tcp,FromPort=5432,ToPort=5432,UserIdGroupPairs="[{GroupId=$LAMBDA_SG}]"
 ```
 
-If Aurora is **publicly accessible**, Lambda traffic exits via the NAT gateway — also allow the NAT gateway public IP on the database security group, or disable public access and use the private endpoint in the same VPC.
+If Aurora is **publicly accessible**, Lambda traffic exits via the NAT gateway — also allow the NAT gateway public IP on
+the database security group, or disable public access and use the private endpoint in the same VPC.
 
-The templates (`secure-serverless-template.yaml`, `src/init/init-template.yml`) now include VPC CIDR egress on port 5432 for Lambda. Existing stacks must be updated or rules added manually.
+The templates (`secure-serverless-template.yaml`, `src/init/init-template.yml`) now include VPC CIDR egress on port 5432
+for Lambda. Existing stacks must be updated or rules added manually.
 
 ## Template verification notes
 
@@ -264,4 +310,6 @@ SAM local invoke requires Docker and VPC configuration matching your Aurora setu
 
 ## Credits
 
-Based on [aws-samples/aws-serverless-security-workshop](https://github.com/aws-samples/aws-serverless-security-workshop), converted from Node.js to Python with Aurora PostgreSQL 17 and IAM authentication.
+Based
+on [aws-samples/aws-serverless-security-workshop](https://github.com/aws-samples/aws-serverless-security-workshop),
+converted from Node.js to Python with Aurora PostgreSQL 17 and IAM authentication.
