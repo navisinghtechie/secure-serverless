@@ -169,6 +169,9 @@ Resources:
             Method: get
             RestApiId:
               Ref: UnicornApi
+            Auth:
+              ApiKeyRequired: true
+              OverrideApiAuth: true
         CreateCustomizations:
           Type: Api
           Properties:
@@ -176,6 +179,9 @@ Resources:
             Method: post
             RestApiId:
               Ref: UnicornApi
+            Auth:
+              ApiKeyRequired: true
+              OverrideApiAuth: true
         GetCustomization:
           Type: Api
           Properties:
@@ -183,6 +189,9 @@ Resources:
             Method: get
             RestApiId:
               Ref: UnicornApi
+            Auth:
+              ApiKeyRequired: true
+              OverrideApiAuth: true
         DeleteCustomization:
           Type: Api
           Properties:
@@ -190,6 +199,9 @@ Resources:
             Method: delete
             RestApiId:
               Ref: UnicornApi
+            Auth:
+              ApiKeyRequired: true
+              OverrideApiAuth: true
 
   UnicornPartsFunction:
     Type: AWS::Serverless::Function
@@ -226,6 +238,9 @@ Resources:
             Method: get
             RestApiId:
               Ref: UnicornApi
+            Auth:
+              ApiKeyRequired: true
+              OverrideApiAuth: true
         ListHorns:
           Type: Api
           Properties:
@@ -233,6 +248,9 @@ Resources:
             Method: get
             RestApiId:
               Ref: UnicornApi
+            Auth:
+              ApiKeyRequired: true
+              OverrideApiAuth: true
         ListGlasses:
           Type: Api
           Properties:
@@ -240,6 +258,9 @@ Resources:
             Method: get
             RestApiId:
               Ref: UnicornApi
+            Auth:
+              ApiKeyRequired: true
+              OverrideApiAuth: true
         ListCapes:
           Type: Api
           Properties:
@@ -247,6 +268,9 @@ Resources:
             Method: get
             RestApiId:
               Ref: UnicornApi
+            Auth:
+              ApiKeyRequired: true
+              OverrideApiAuth: true
 
   #------Module 9: Lambda IAM modules starts
   CustomUnicornAnalyticsFunction:
@@ -333,6 +357,10 @@ Resources:
 
         #Security Definitions
         securityDefinitions:
+          ApiKey:
+            type: apikey
+            name: x-api-key
+            in: header
           CustomAuthorizer:
             type: apiKey
             name: Authorization
@@ -346,11 +374,15 @@ Resources:
                 Fn::Sub: ${ApiGatewayAuthorizerRole.Arn}
               authorizerResultTtlInSeconds: 60
 
+        #Authorizer
+        x-amazon-apigateway-api-key-source: AUTHORIZER
+
         paths:
           "/socks":
             get:
               security:
                 - CustomAuthorizer: [ ]
+                - ApiKey: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
@@ -386,6 +418,7 @@ Resources:
             get:
               security:
                 - CustomAuthorizer: [ ]
+                - ApiKey: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
@@ -421,6 +454,7 @@ Resources:
             get:
               security:
                 - CustomAuthorizer: [ ]
+                - ApiKey: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
@@ -456,6 +490,7 @@ Resources:
             get:
               security:
                 - CustomAuthorizer: [ ]
+                - ApiKey: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
@@ -491,6 +526,7 @@ Resources:
             get:
               security:
                 - CustomAuthorizer: [ ]
+                - ApiKey: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy
@@ -535,6 +571,7 @@ Resources:
             get:
               security:
                 - CustomAuthorizer: [ ]
+                - ApiKey: [ ]
               x-amazon-apigateway-integration:
                 httpMethod: POST
                 type: aws_proxy

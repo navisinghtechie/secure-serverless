@@ -125,7 +125,7 @@ def _validate_token(pems, event):
                 auth_response["context"] = {"CompanyID": item["CompanyID"]["S"]}
 
                 # Uncomment here to pass on the client ID as the api key in the auth response
-                # auth_response["usageIdentifierKey"] = payload["client_id"]
+                auth_response["usageIdentifierKey"] = payload["client_id"]
 
                 print("authResponse:" + json.dumps(auth_response, indent=2))
                 return auth_response
