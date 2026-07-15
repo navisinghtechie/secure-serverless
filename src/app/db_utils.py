@@ -3,6 +3,10 @@ import os
 from datetime import date, datetime
 from decimal import Decimal
 
+from aws_xray_sdk.core import patch, xray_recorder
+
+patch(["boto3"])
+
 from aws_secretsmanager_caching import SecretCache, SecretCacheConfig
 import boto3
 from botocore.exceptions import ClientError
@@ -58,6 +62,7 @@ def _get_secret_cache():
     return _secret_cache_client
 
 
+@xray_recorder.capture("secrets_manager_get_secret")
 def _load_db_secret():
     secret_string = _get_secret_cache().get_secret_string(_get_secret_name())
 
@@ -72,6 +77,7 @@ def _load_db_secret():
     return secret
 
 
+@xray_recorder.capture("resolve_db_password")
 def _resolve_password(host, user, port, secret):
     if _use_iam_auth():
         return _get_rds_client().generate_db_auth_token(

@@ -5,6 +5,7 @@ Description: Third party API functionality for Wild Rydes
 Globals:
   Function:
     Timeout: 30
+    Tracing: Active
     Environment:
       Variables:
         SECRET_NAME: secure-serverless-db-secret
@@ -347,6 +348,7 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: dev
+      TracingEnabled: true
       DefinitionBody:
         swagger: "2.0"
         info:

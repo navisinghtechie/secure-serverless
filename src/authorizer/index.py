@@ -1,5 +1,9 @@
 print("Loading function")
 
+from aws_xray_sdk.core import patch, xray_recorder
+
+patch(["boto3", "requests"])
+
 import json
 import os
 
@@ -23,6 +27,7 @@ PARTNER_ADMIN_SCOPE = "WildRydes/ManagePartners"
 _pems = None
 
 
+@xray_recorder.capture("load_jwks")
 def _load_pems():
     global _pems
     if _pems is None:
@@ -36,6 +41,15 @@ def _load_pems():
             jwk = {"kty": key["kty"], "n": key["n"], "e": key["e"]}
             _pems[key_id] = RSAAlgorithm.from_jwk(json.dumps(jwk))
     return _pems
+
+
+@xray_recorder.capture("ddb_get_partner")
+def _get_partner_item(client_id):
+    params = {
+        "TableName": COMPANY_DDB_TABLE,
+        "Key": {"ClientID": {"S": client_id}},
+    }
+    return ddb_client.get_item(**params)
 
 
 def _validate_token(pems, event):
@@ -112,13 +126,8 @@ def _validate_token(pems, event):
         policy.allow_method(HttpVerb.DELETE, "/customizations*")
         auth_response = policy.build()
 
-        params = {
-            "TableName": COMPANY_DDB_TABLE,
-            "Key": {"ClientID": {"S": payload["client_id"]}},
-        }
-
         try:
-            response = ddb_client.get_item(**params)
+            response = _get_partner_item(payload["client_id"])
             print("DDB response:\n" + json.dumps(response))
             item = response.get("Item")
             if item and "CompanyID" in item:
@@ -142,6 +151,7 @@ def _validate_token(pems, event):
     raise Exception("Unauthorized")
 
 
+@xray_recorder.capture("authorizer_handler")
 def handler(event, context):
     print("received event:\n" + json.dumps(event, indent=2))
 
